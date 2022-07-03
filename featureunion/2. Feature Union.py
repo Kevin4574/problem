@@ -22,7 +22,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.metrics import accuracy_score
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline,FeatureUnion
 from custom_transformer import StartingVerbExtractor
 from numpy import hstack
 
@@ -66,45 +66,36 @@ def display_results(y_test, y_pred):
     print("Confusion Matrix:\n", confusion_mat)
     print("Accuracy:", accuracy)
 
+def model_pipeline():
+    pipeline = Pipeline([
+        ('features', FeatureUnion([
+
+            ('text_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ])),
+
+            ('starting_verb', StartingVerbExtractor())
+        ])),
+
+        ('clf', RandomForestClassifier())
+    ])
+
+    return pipeline
+
 def main():
-    # load data and perform train text split
     X, y = load_data()
     X_train, X_test, y_train, y_test = train_test_split(X, y)
 
-    # instantiate transformers and classifiers
-    vect = CountVectorizer(tokenizer=tokenize)
-    tfidf = TfidfTransformer()
-    verb_vectorizer = StartingVerbExtractor()
-    clf = RandomForestClassifier()
+    model = model_pipeline()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-    # fit and transform the training data
-    X_train_counts = vect.fit_transform(X_train)
-    X_train_tfidf = tfidf.fit_transform(X_train_counts)
-    print(len(X_train_tfidf.toarray()))
-
-    # fit transform for start verb
-    star_verb = verb_vectorizer.fit_transform(X_train)
-    print(len(star_verb))
-
-    # add the new feature
-    fea = hstack([X_train_tfidf,star_verb])
-    print(fea)
-    exit()
-
-    # train classifier
-    clf.fit(X_train_tfidf, y_train)
-
-    # transform (no fitting) the test data
-    X_test_counts = vect.transform(X_test)
-    X_test_tfidf = tfidf.transform(X_test_counts)
-    # predict on test data
-    y_pred = clf.predict(X_test_tfidf)
-
-    # display results
     display_results(y_test, y_pred)
 
-
 main()
+
+
 
 
 
